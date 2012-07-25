@@ -6,12 +6,16 @@ class SinatraAMQP < Sinatra::Base
 
   def amqp(&block)
     EventMachine.next_tick do
-      if AMQP.connection
+      if AMQP.connection && AMQP.connection.connected?
         p "Already connected"
         yield(AMQP.connection)
       else
-        AMQP.connect(:host => "127.0.0.1") do |connection|
+        AMQP.connect(:host => "127.0.0.1", :on_tcp_connection_failure => proc { puts "TCP Failed" }) do |connection|
           AMQP.connection = connection
+          AMQP.connection.on_tcp_connection_loss do |connection, settings|
+            # reconnect in 10 seconds, without enforcement
+            connection.reconnect(false, 10)
+          end
           p "Connected"
           yield(connection)
         end
