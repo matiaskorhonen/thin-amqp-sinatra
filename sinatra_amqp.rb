@@ -2,18 +2,27 @@ require "sinatra/base"
 require "amqp"
 
 class SinatraAMQP < Sinatra::Base
+  register Sinatra::Async
 
   def amqp(&block)
-    AMQP.connect(:host => "127.0.0.1") do |connection|
-      p "Connected"
-      yield(connection)
+    EventMachine.next_tick do
+      if AMQP.connection
+        p "Already connected"
+        yield(AMQP.connection)
+      else
+        AMQP.connect(:host => "127.0.0.1") do |connection|
+          AMQP.connection = connection
+          p "Connected"
+          yield(connection)
+        end
+      end
     end
   end
 
-  get "/" do
+  aget "/" do
     content_type "text/plain"
 
-    a = amqp do |connection|
+    amqp do |connection|
       channel    = AMQP::Channel.new(connection)
 
       AMQP::Queue.new(channel, "", :exclusive => true, :auto_delete => true) do |replies_queue|
@@ -27,12 +36,12 @@ class SinatraAMQP < Sinatra::Base
                                           :immediate   => true)
 
         replies_queue.subscribe do |metadata, payload|
-          p "Got a reply: #{payload}"
+          body {
+            "Got a reply: #{payload}"
+          }
         end
       end
     end
-
-    "OK" # We'd want to return the payload and metadata here.
   end
 
 end
