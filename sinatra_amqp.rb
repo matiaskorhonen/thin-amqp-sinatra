@@ -22,6 +22,9 @@ class SinatraAMQP < Sinatra::Base
   aget "/" do
     content_type "text/plain"
 
+    # Timeout if the request takes more than 5 seconds
+    EventMachine.add_timer(5) { body { "Timeout" } }
+
     amqp do |connection|
       channel    = AMQP::Channel.new(connection)
 
