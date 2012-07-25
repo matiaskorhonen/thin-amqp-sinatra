@@ -4,29 +4,35 @@ require "amqp"
 class SinatraAMQP < Sinatra::Base
 
   def amqp(&block)
-    unless AMQP.connection
-      AMQP.connection = AMQP.connect(:host => "127.0.0.1")
-    end
-
-    if AMQP.connection.connected?
+    AMQP.connect(:host => "127.0.0.1") do |connection|
       p "Connected"
-      block.call
-    else 
-      p "Not Connected"
-      AMQP.connection.register_connection_callback do
-        raise "Error couldn't connect" unless AMQP.connection.connected?
-        block.call
-      end
+      yield(connection)
     end
   end
 
   get "/" do
-    amqp do
-      MQ.queue("amqp.sinatra.thin.test", :durable => true).publish("test_message")
+    content_type "text/plain"
+
+    a = amqp do |connection|
+      channel    = AMQP::Channel.new(connection)
+
+      AMQP::Queue.new(channel, "", :exclusive => true, :auto_delete => true) do |replies_queue|
+        puts "#{replies_queue.name} is ready to go."
+
+        puts "[request] Sending a request..."
+        channel.default_exchange.publish("get.time",
+                                          :routing_key => "amqpgem.examples.services.time",
+                                          :message_id  => SecureRandom.uuid,
+                                          :reply_to    => replies_queue.name,
+                                          :immediate   => true)
+
+        replies_queue.subscribe do |metadata, payload|
+          p "Got a reply: #{payload}"
+        end
+      end
     end
 
-    content_type "text/plain"
-    "OK"
+    "OK" # We'd want to return the payload and metadata here.
   end
 
 end

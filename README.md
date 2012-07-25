@@ -15,4 +15,4 @@ Prerequisites: Ruby, Homebrew, Bundler
     foreman start
     open http://localhost:5000
 
-Navigating to <http://localhost:5000> publishes a message to the `amqp.sinatra.thin.test` queue.
+Navigate to <http://localhost:5000> and watch the logs.
