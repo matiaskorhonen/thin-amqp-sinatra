@@ -1,5 +1,6 @@
 require "sinatra/base"
 require "amqp"
+require "securerandom"
 
 class SinatraAMQP < Sinatra::Base
   register Sinatra::Async
@@ -38,7 +39,7 @@ class SinatraAMQP < Sinatra::Base
         puts "[request] Sending a request..."
         channel.default_exchange.publish("get.time",
                                           :routing_key => "amqpgem.examples.services.time",
-                                          :message_id  => SecureRandom.uuid,
+                                          :message_id  => SecureRandom.hex(32),
                                           :reply_to    => replies_queue.name,
                                           :immediate   => true)
 
