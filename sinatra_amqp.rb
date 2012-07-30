@@ -28,7 +28,7 @@ class SinatraAMQP < Sinatra::Base
     content_type "text/plain"
 
     # Timeout if the request takes more than 5 seconds
-    EventMachine.add_timer(5) { body { "Timeout" } }
+    timer = EventMachine::Timer.new(5) { body { "Timeout" } }
 
     amqp do |connection|
       channel    = AMQP::Channel.new(connection)
@@ -45,6 +45,7 @@ class SinatraAMQP < Sinatra::Base
 
         replies_queue.subscribe do |metadata, payload|
           body {
+            timer.cancel
             "Got a reply: #{payload}"
           }
         end
